@@ -11,7 +11,7 @@ started Tomcat with the APR HTTP/1.1 Connector.
 The problem symptom is with Keep-Alive connection, as follows:
 
 - the client (browser, jmeter, etc.) sends a first request
-  - the servlet starts a Process for e.g. wordpad.exe
+  - the servlet starts a Process 
   - the servlet returns an acknowledgment html content, sets the content
     length, flushes the writer, and returns
 - the client displays the received acknowledgement html content, sends

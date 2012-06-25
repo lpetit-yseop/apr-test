@@ -1,0 +1,79 @@
+I. Problem statement
+II. Problem reproduction
+
+I. Problem statement
+====================
+
+I have a problem with keep-alive connections, when starting a subprocess
+(via JDK's default ProcessBuilder/Process API), while also having
+started Tomcat with the APR HTTP/1.1 Connector.
+
+The problem symptom is with Keep-Alive connection, as follows:
+
+- the client (browser, jmeter, etc.) sends a first request
+  - the servlet starts a Process for e.g. wordpad.exe
+  - the servlet returns an acknowledgment html content, sets the content
+    length, flushes the writer, and returns
+- the client displays the received acknowledgement html content, sends
+  the second request to the server.
+- the server doesn't answer. No Tomcat log ever reports the start of
+  something received.
+- Then when on the server you close the wordpad.exe instance, the server
+  finally handles the second request.
+
+
+So far, the only reliable solution we have found to work around this
+problem is to not use the HTP/1.1 APR Connector.
+
+
+Configuration (The problem only happens on Windows Boxes) :
+
+Windows 2008 US std R2 64bits
+Tomcat 6.0.32 64 bits
+Java 6u30 64 bits(Oracle)
+
+Same issue has been observed on Windows 7 32 bits.
+
+Was not able to reproduce the issue on Linux Ubuntu Desktop 11.10 or
+12.04.
+
+
+II. Problem reproduction
+========================
+
+Directory structure:
+apr-test/
+  apr-test/             <- webapp with the problematic behaviour
+  apr-test-executable/  <- executable jar used by apr-test webapp 
+  apr-test.jmx          <- JMeter test file reproducing the problematic behaviour
+  pom.xml               <- master pom to build webapp & executable at once 
+
+- In servlet.xml, set connectionTimeout="200" 
+  (to get deterministic reproducible results)
+
+- Compile the apr-test-executable java executable:
+  - "mvn clean install" in apr-test-executable 
+  - place it e.g. in "C:\\" where the webapp will be able to find it
+  
+- Create the apr-test webapp:
+  - in src/main/webapp/WEB-INF/web.xml, configure the 3 servlet init parameters
+    according to your setup:
+       JAVA_EXE_PATH = path to your java.exe executable
+       APR_EXECUTABLE_PATH = path to where you'll locate apr-test-executable.jar
+       APR_EXECUTABLE_CURRENT_DIRECTORY = directory which will be used as current directory for apr-test-executable.jar
+  - Create the apr-test webapp via maven: "mvn clean package" 
+
+- Install the webapp in your Tomcat's webapps/ folder
+- Start Tomcat
+
+- Start JMeter and open script apr-test.jmx
+- Launch the script
+
+What you'll observe:
+- The first request succeeds quickly
+- The second request is only served when 20 seconds elapse, which is the time
+  the background process takes to return (even tho it is started asynchronously)
+  
+What you'd expect:
+- No delay between successive requests
+
